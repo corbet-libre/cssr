@@ -16,3 +16,11 @@ crate-type = ["rlib"]
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"
+
+[dependencies]
+crlt = { git = "https://github.com/corbet-foss/crlt", rev = "6b94dacd7fa04aa8847c62c6471a1fc5c0f6c9dc" }
+tokio = { version = "1", features = ["rt", "time", "net"] }
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"
