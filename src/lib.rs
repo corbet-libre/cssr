@@ -1,5 +1,6 @@
 //! Atomic opaque issuer records. Callers must verify changes before issuing them.
 //! No proof verification, holder keys, balances, receipts or request logging.
+pub mod certificate;
 use std::{
     collections::BTreeMap,
     path::Path,

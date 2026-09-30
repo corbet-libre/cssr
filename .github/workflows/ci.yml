@@ -34,4 +34,9 @@ jobs:
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0
         with:
           tool: cargo-deny
-      - run: cargo deny check advisories licenses
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: cargo metadata --locked --format-version 1 > dependency-metadata.json
+      - run: node .github/check-advisory-exposure.mjs
+      - run: cargo deny --locked check advisories licenses

@@ -11,3 +11,13 @@ Use `LibsqlStore::local` for standalone tests. Services install `SCHEMA` in thei
 GitHub Actions runs stable Rust formatting, clippy with warnings denied, and tests. No workstation builds. See [CONTRACT](docs/CONTRACT.md).
 
 Copyright 2026 Julian Y. Richard Corbet. LGPL-3.0-only WITH LGPL-3.0-linking-exception; see [LICENSE.md](LICENSE.md).
+
+Circuit-readable accepted-state certificates use RustCrypto `p256` 0.13 ECDSA
+with SHA-256 and canonical low-S signatures. Ed25519 was retained for existing
+service acceptances; P-256 was selected for this additional certificate because
+the pinned Noir standard library already verifies it for contact receipts.
+The certificate signs only community, opaque owner/state, circuit scope, version
+and acceptance time. It is a private witness in anonymous deposit proofs.
+The caller must first verify and atomically accept the state; signing alone does
+not prove its semantics. The issuer key is independently generated and pinned by
+the embedding. See [transport exceptions](docs/DEPENDENCIES.md).
