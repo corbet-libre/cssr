@@ -67,9 +67,16 @@ fn interrupted_memory_transaction_is_never_recovered_as_accepted() {
 fn service_composition_rejects_corrupt_values_and_absent_schema() {
     use std::sync::Arc;
     let dir = tempfile::tempdir().unwrap();
-    let runtime = Arc::new(tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap());
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap(),
+    );
     let url = url::Url::from_file_path(dir.path().join("service.db")).unwrap();
-    let db = runtime.block_on(crlt::Db::open(crlt::Config::new(url.to_string(), ""))).unwrap();
+    let db = runtime
+        .block_on(crlt::Db::open(crlt::Config::new(url.to_string(), "")))
+        .unwrap();
     let community = db.community("service").unwrap();
     let mut store = LibsqlStore::from_community(runtime.clone(), community.clone());
     assert!(store.check_query_plans().is_err());
@@ -82,9 +89,15 @@ fn service_composition_rejects_corrupt_values_and_absent_schema() {
         let mut tx = store.transaction().unwrap();
         assert!(tx.delete(b"state").is_err());
     }
-    runtime.block_on(db.migrate(&[crlt::Migration::new(1, "issuer", cssr::SCHEMA)])).unwrap();
-    runtime.block_on(community.execute("INSERT INTO cssr_records(key,value) VALUES(?1,?2)",
-        crlt::params![b"corrupt".as_slice(), "not a blob"])).unwrap();
+    runtime
+        .block_on(db.migrate(&[crlt::Migration::new(1, "issuer", cssr::SCHEMA)]))
+        .unwrap();
+    runtime
+        .block_on(community.execute(
+            "INSERT INTO cssr_records(key,value) VALUES(?1,?2)",
+            crlt::params![b"corrupt".as_slice(), "not a blob"],
+        ))
+        .unwrap();
     {
         let mut tx = store.transaction().unwrap();
         assert!(tx.get(b"corrupt").is_err());
