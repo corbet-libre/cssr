@@ -21,3 +21,9 @@ and acceptance time. It is a private witness in anonymous deposit proofs.
 The caller must first verify and atomically accept the state; signing alone does
 not prove its semantics. The issuer key is independently generated and pinned by
 the embedding. See [transport exceptions](docs/DEPENDENCIES.md).
+
+## Continuous verification
+
+Dependency updates follow main and are tested against one CI-resolved lockfile.
+Line and branch coverage target 100%; failures remain blocking. See
+[the coverage contract](docs/COVERAGE.md) for measurement and exclusions.
