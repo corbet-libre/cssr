@@ -18,7 +18,7 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 
 [dependencies]
-p256 = { version = "0.13", features = ["ecdsa"] }
+p256 = { version = "0.14", features = ["ecdsa"] }
 crlt = { git = "https://github.com/corbet-foss/crlt", branch = "main" }
 tokio = { version = "1", features = ["rt", "time", "net"] }
 url = "2"
