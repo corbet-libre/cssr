@@ -106,6 +106,44 @@ fn service_composition_rejects_corrupt_values_and_absent_schema() {
     store.check_query_plans().unwrap();
     round_trip(&mut store);
 }
+
+#[test]
+fn migration_conflict_and_real_constraint_failure_are_redacted() {
+    use std::sync::Arc;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("constrained.db");
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap(),
+    );
+    let url = url::Url::from_file_path(&path).unwrap();
+    let db = runtime
+        .block_on(crlt::Db::open(crlt::Config::new(url.to_string(), "")))
+        .unwrap();
+    let constrained = cssr::SCHEMA.replace(
+        "value BLOB NOT NULL",
+        "value BLOB NOT NULL CHECK(length(value) < 10)",
+    );
+    runtime
+        .block_on(db.migrate(&[crlt::Migration::new(1, "constraint", &constrained)]))
+        .unwrap();
+    assert!(LibsqlStore::local(&path, "service").is_err());
+    let community = db.community("service").unwrap();
+    let mut store = LibsqlStore::from_community(runtime, community);
+    let mut tx = store.transaction().unwrap();
+    assert!(tx.put(b"state", b"too long for this schema").is_err());
+    assert!(tx.commit().is_err());
+    assert!(
+        store
+            .transaction()
+            .unwrap()
+            .get(b"state")
+            .unwrap()
+            .is_none()
+    );
+}
 #[test]
 fn memory_round_trip() {
     round_trip(&mut MemoryStore::default());

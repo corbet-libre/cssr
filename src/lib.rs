@@ -48,7 +48,7 @@ struct MemoryTransaction<'a> {
 }
 impl Storage for MemoryStore {
     fn transaction(&mut self) -> Result<Box<dyn Transaction + '_>> {
-        let guard = self.0.lock().map_err(|_| Error)?;
+        let guard = self.0.lock().or(Err(Error))?;
         let pending = guard.clone();
         Ok(Box::new(MemoryTransaction { guard, pending }))
     }
@@ -90,15 +90,13 @@ impl LibsqlStore {
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .map_err(|_| Error)?,
+                .or(Err(Error))?,
         );
-        let db = runtime
-            .block_on(crlt::Db::open(config))
-            .map_err(|_| Error)?;
+        let db = runtime.block_on(crlt::Db::open(config)).or(Err(Error))?;
         runtime
             .block_on(db.migrate(&[crlt::Migration::new(1, "issuer", SCHEMA)]))
-            .map_err(|_| Error)?;
-        let scoped = db.community(community).map_err(|_| Error)?;
+            .or(Err(Error))?;
+        let scoped = db.community(community).or(Err(Error))?;
         Ok(Self {
             runtime,
             community: scoped,
@@ -106,8 +104,8 @@ impl LibsqlStore {
     }
     /// Open a real local file through the official libSQL client.
     pub fn local(path: impl AsRef<Path>, community: &str) -> Result<Self> {
-        let path = std::path::absolute(path).map_err(|_| Error)?;
-        let url = url::Url::from_file_path(path).map_err(|_| Error)?;
+        let path = std::path::absolute(path).or(Err(Error))?;
+        let url = url::Url::from_file_path(path).or(Err(Error))?;
         Self::open(crlt::Config::new(url.to_string(), ""), community)
     }
     /// Compose with a service-owned, already migrated community capability.
@@ -133,7 +131,7 @@ impl LibsqlStore {
             self.runtime
                 .block_on(self.community.explain(sql, params))
                 .and_then(|p| p.assert_indexed())
-                .map_err(|_| Error)?;
+                .or(Err(Error))?;
         }
         Ok(())
     }
@@ -144,10 +142,7 @@ struct SqlTransaction {
 }
 impl Storage for LibsqlStore {
     fn transaction(&mut self) -> Result<Box<dyn Transaction + '_>> {
-        let tx = self
-            .runtime
-            .block_on(self.community.tx())
-            .map_err(|_| Error)?;
+        let tx = self.runtime.block_on(self.community.tx()).or(Err(Error))?;
         Ok(Box::new(SqlTransaction {
             runtime: self.runtime.clone(),
             tx: Some(tx),
@@ -162,9 +157,9 @@ impl Transaction for SqlTransaction {
                 "SELECT value FROM cssr_records WHERE key=?1",
                 crlt::params![key],
             ))
-            .map_err(|_| Error)?;
+            .or(Err(Error))?;
         rows.first()
-            .map(|row| match row.get_value(0).map_err(|_| Error)? {
+            .map(|row| match row.get_value(0).or(Err(Error))? {
                 crlt::Value::Blob(value) => Ok(value.clone()),
                 _ => Err(Error),
             })
@@ -185,7 +180,7 @@ impl Transaction for SqlTransaction {
                     .ok_or(Error)?
                     .execute(sql, crlt::params![key, value]),
             )
-            .map_err(|_| Error)?;
+            .or(Err(Error))?;
         Ok(())
     }
     fn delete(&mut self, key: &[u8]) -> Result<()> {
@@ -196,18 +191,18 @@ impl Transaction for SqlTransaction {
                     .ok_or(Error)?
                     .execute("DELETE FROM cssr_records WHERE key=?1", crlt::params![key]),
             )
-            .map_err(|_| Error)?;
+            .or(Err(Error))?;
         Ok(())
     }
     fn commit(mut self: Box<Self>) -> Result<()> {
         self.runtime
             .block_on(self.tx.take().ok_or(Error)?.commit())
-            .map_err(|_| Error)
+            .or(Err(Error))
     }
     fn rollback(mut self: Box<Self>) -> Result<()> {
         self.runtime
             .block_on(self.tx.take().ok_or(Error)?.rollback())
-            .map_err(|_| Error)
+            .or(Err(Error))
     }
 }
 impl Drop for SqlTransaction {

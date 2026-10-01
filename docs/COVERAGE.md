@@ -1,7 +1,7 @@
 # Coverage contract
 
 CI targets 100% of reachable production lines and branches. Stable Rust runs
-the existing native and wasm checks. Nightly Rust is used only for LLVM branch
+real native local and remote libSQL checks. This issuer storage crate is server-only. Nightly Rust is used only for LLVM branch
 instrumentation, which currently requires it. Both jobs use the same resolved
 Cargo.lock snapshot; all build and test commands after resolution use --locked.
 
@@ -21,3 +21,9 @@ Cargo.lock, with exactly one source per first-party crate. Dependabot maintains
 committed snapshots; CI refreshes once per run and retains the tested snapshot.
 Auto-merge requires protected main and successful substantive checks on the
 exact current Dependabot head. It never executes PR code with write permissions.
+
+The storage adapter maps dependency errors to one zero-sized redacted Error.
+It uses Result::or with that constant instead of generic error closures; no
+underlying error is copied into a log or response. Actual local/remote storage,
+rollback, poisoned writer, absent-schema and malformed-value paths execute in
+CI. These mappings have no production coverage exclusion.
