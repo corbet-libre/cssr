@@ -21,8 +21,20 @@ impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
 /// An atomic community-scoped issuer transaction. Dropping discards all changes.
 pub trait Transaction {
-    /// Read one exact key, never a prefix or history scan.
+    /// Read one exact current key.
     fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>>;
+    /// Read a bounded half-open range of CURRENT opaque records in this same
+    /// transaction, ordered by the composite primary key. Used by cblc's common
+    /// epoch freeze, never a member lookup endpoint or an account-history scan.
+    /// Older custom stores fail closed until they implement the actual snapshot.
+    fn current_range(
+        &mut self,
+        _start: &[u8],
+        _end: &[u8],
+        _limit: u32,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        Err(Error)
+    }
     /// Replace a current record. Never append account history.
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     /// Remove one exact record.
@@ -57,6 +69,20 @@ impl Transaction for MemoryTransaction<'_> {
     fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         Ok(self.pending.get(key).cloned())
     }
+    fn current_range(
+        &mut self,
+        start: &[u8],
+        end: &[u8],
+        limit: u32,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        range_bounds(start, end, limit)?;
+        Ok(self
+            .pending
+            .range(start.to_vec()..end.to_vec())
+            .take(limit as usize)
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect())
+    }
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         self.pending.insert(key.to_vec(), value.to_vec());
         Ok(())
@@ -77,6 +103,13 @@ impl Transaction for MemoryTransaction<'_> {
 pub const SCHEMA: &str = "CREATE TABLE cssr_records (
  community_id TEXT NOT NULL, key BLOB NOT NULL, value BLOB NOT NULL,
  PRIMARY KEY (community_id,key)) WITHOUT ROWID;";
+
+fn range_bounds(start: &[u8], end: &[u8], limit: u32) -> Result<()> {
+    if start.is_empty() || start >= end || !(1..=100_001).contains(&limit) {
+        return Err(Error);
+    }
+    Ok(())
+}
 /// A libSQL store using the shared crlt facade. All queries use the composite primary key.
 /// Run synchronous methods on a blocking thread outside a Tokio runtime.
 pub struct LibsqlStore {
@@ -127,6 +160,14 @@ impl LibsqlStore {
                 "DELETE FROM cssr_records WHERE key=?1",
                 vec![crlt::Value::Blob(vec![0])],
             ),
+            (
+                "SELECT key,value FROM cssr_records WHERE key>=?1 AND key<?2 ORDER BY key LIMIT ?3",
+                vec![
+                    crlt::Value::Blob(vec![1]),
+                    crlt::Value::Blob(vec![2]),
+                    crlt::Value::Integer(100),
+                ],
+            ),
         ] {
             self.runtime
                 .block_on(self.community.explain(sql, params))
@@ -164,6 +205,34 @@ impl Transaction for SqlTransaction {
                 _ => Err(Error),
             })
             .transpose()
+    }
+    fn current_range(
+        &mut self,
+        start: &[u8],
+        end: &[u8],
+        limit: u32,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        range_bounds(start, end, limit)?;
+        let rows = self
+            .runtime
+            .block_on(self.tx.as_mut().ok_or(Error)?.query(
+                "SELECT key,value FROM cssr_records WHERE key>=?1 AND key<?2 ORDER BY key LIMIT ?3",
+                crlt::params![start, end, i64::from(limit)],
+            ))
+            .or(Err(Error))?;
+        rows.iter()
+            .map(|row| {
+                match (
+                    row.get_value(0).or(Err(Error))?,
+                    row.get_value(1).or(Err(Error))?,
+                ) {
+                    (crlt::Value::Blob(key), crlt::Value::Blob(value)) => {
+                        Ok((key.clone(), value.clone()))
+                    }
+                    _ => Err(Error),
+                }
+            })
+            .collect()
     }
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         // Keep SQL portable and scope-aware; the immediate transaction protects the check.

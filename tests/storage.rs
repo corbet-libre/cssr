@@ -148,6 +148,70 @@ fn migration_conflict_and_real_constraint_failure_are_redacted() {
 fn memory_round_trip() {
     round_trip(&mut MemoryStore::default());
 }
+
+fn epoch_snapshot(store: &mut dyn Storage) {
+    let mut tx = store.transaction().unwrap();
+    for (key, value) in [(b"aa", b"v1"), (b"ab", b"v2"), (b"ba", b"v3")] {
+        tx.put(key, value).unwrap();
+    }
+    assert_eq!(
+        tx.current_range(b"a", b"b", 1).unwrap(),
+        vec![(b"aa".to_vec(), b"v1".to_vec())]
+    );
+    assert_eq!(
+        tx.current_range(b"a", b"b", 3).unwrap(),
+        vec![
+            (b"aa".to_vec(), b"v1".to_vec()),
+            (b"ab".to_vec(), b"v2".to_vec())
+        ]
+    );
+    tx.put(b"aa", b"v4").unwrap();
+    tx.delete(b"ab").unwrap();
+    assert_eq!(
+        tx.current_range(b"a", b"b", 3).unwrap(),
+        vec![(b"aa".to_vec(), b"v4".to_vec())]
+    );
+    for (start, end, limit) in [
+        (b"".as_slice(), b"b".as_slice(), 1),
+        (b"a", b"a", 1),
+        (b"b", b"a", 1),
+        (b"a", b"b", 0),
+        (b"a", b"b", 100_002),
+    ] {
+        assert!(tx.current_range(start, end, limit).is_err());
+    }
+    tx.rollback().unwrap();
+    assert!(
+        store
+            .transaction()
+            .unwrap()
+            .current_range(b"a", b"b", 3)
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn real_memory_and_sql_epoch_snapshot_is_atomic_and_indexed() {
+    epoch_snapshot(&mut MemoryStore::default());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("epoch.db");
+    let mut sql = LibsqlStore::local(&path, "epoch-a").unwrap();
+    let mut other = LibsqlStore::local(&path, "epoch-b").unwrap();
+    let mut tx = other.transaction().unwrap();
+    tx.put(b"ab", b"foreign").unwrap();
+    tx.commit().unwrap();
+    sql.check_query_plans().unwrap();
+    epoch_snapshot(&mut sql);
+    assert_eq!(
+        other
+            .transaction()
+            .unwrap()
+            .current_range(b"a", b"b", 3)
+            .unwrap(),
+        vec![(b"ab".to_vec(), b"foreign".to_vec())]
+    );
+}
 #[test]
 fn libsql_round_trip_restart_isolation_and_plans() {
     let dir = tempfile::tempdir().unwrap();
