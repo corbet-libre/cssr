@@ -1,5 +1,5 @@
 //! Integration tests for the public contract.
-use cssr::{LibsqlStore, MemoryStore, Storage};
+use cssr::{LibsqlStore, MemoryStore, Storage, Transaction};
 fn round_trip(store: &mut dyn Storage) {
     {
         let mut tx = store.transaction().unwrap();
@@ -101,6 +101,10 @@ fn service_composition_rejects_corrupt_values_and_absent_schema() {
     {
         let mut tx = store.transaction().unwrap();
         assert!(tx.get(b"corrupt").is_err());
+        // A valid first row must not turn a malformed later row into a partial
+        // epoch snapshot. Exercise SQLite's actual non-BLOB stored value.
+        tx.put(b"ca", b"valid").unwrap();
+        assert!(tx.current_range(b"c", b"d", 2).is_err());
         tx.rollback().unwrap();
     }
     store.check_query_plans().unwrap();
@@ -147,6 +151,48 @@ fn migration_conflict_and_real_constraint_failure_are_redacted() {
 #[test]
 fn memory_round_trip() {
     round_trip(&mut MemoryStore::default());
+}
+
+// A pre-snapshot custom store still implements only the original transaction
+// contract. All its operations delegate to the real MemoryStore; deliberately
+// leave current_range at the public trait's compatibility default.
+struct LegacyStore(MemoryStore);
+struct LegacyTransaction<'a>(Box<dyn Transaction + 'a>);
+impl Storage for LegacyStore {
+    fn transaction(&mut self) -> cssr::Result<Box<dyn Transaction + '_>> {
+        Ok(Box::new(LegacyTransaction(self.0.transaction()?)))
+    }
+}
+impl Transaction for LegacyTransaction<'_> {
+    fn get(&mut self, key: &[u8]) -> cssr::Result<Option<Vec<u8>>> {
+        self.0.get(key)
+    }
+    fn put(&mut self, key: &[u8], value: &[u8]) -> cssr::Result<()> {
+        self.0.put(key, value)
+    }
+    fn delete(&mut self, key: &[u8]) -> cssr::Result<()> {
+        self.0.delete(key)
+    }
+    fn commit(self: Box<Self>) -> cssr::Result<()> {
+        self.0.commit()
+    }
+    fn rollback(self: Box<Self>) -> cssr::Result<()> {
+        self.0.rollback()
+    }
+}
+
+#[test]
+fn legacy_custom_store_keeps_updates_but_refuses_epoch_snapshots() {
+    let mut store = LegacyStore(MemoryStore::default());
+    round_trip(&mut store);
+    {
+        let mut tx = store.transaction().unwrap();
+        tx.put(b"state", b"pending").unwrap();
+        // An unsupported snapshot must be an error, never an empty community.
+        assert!(tx.current_range(b"s", b"t", 1).is_err());
+        tx.rollback().unwrap();
+    }
+    assert_eq!(store.transaction().unwrap().get(b"state").unwrap(), None);
 }
 
 fn epoch_snapshot(store: &mut dyn Storage) {

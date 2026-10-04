@@ -1,0 +1,10 @@
+schema = 1
+project = "cssr"
+
+[checks.native]
+kind = "commands"
+commands = [["bash", ".ci/native.sh"]]
+
+[checks.original-suite]
+kind = "commands"
+commands = [["bash", ".ci/native.sh", "original-suite"]]
