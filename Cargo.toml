@@ -18,6 +18,7 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 
 [dependencies]
+czkp = { git = "https://github.com/corbet-foss/czkp", branch = "main" }
 p256 = { version = "0.13", features = ["ecdsa"] }
 crlt = { git = "https://github.com/corbet-foss/crlt", branch = "main" }
 tokio = { version = "1", features = ["rt", "time", "net"] }

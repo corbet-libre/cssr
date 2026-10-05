@@ -30,7 +30,7 @@ impl AcceptedState {
         }
         bytes.extend_from_slice(&self.version.to_be_bytes());
         bytes.extend_from_slice(&self.accepted_at.to_be_bytes());
-        bytes
+        czkp::compact::message(&bytes)
     }
 }
 
@@ -96,7 +96,7 @@ impl EpochAncestry {
         bytes.extend_from_slice(&self.circuit_digest);
         bytes.extend_from_slice(&self.verifying_key_digest);
         bytes.extend_from_slice(&self.issued_at.to_be_bytes());
-        Ok(bytes)
+        Ok(czkp::compact::message(&bytes))
     }
 }
 
