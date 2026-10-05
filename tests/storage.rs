@@ -217,12 +217,18 @@ fn epoch_snapshot(store: &mut dyn Storage) {
         tx.current_range(b"a", b"b", 3).unwrap(),
         vec![(b"aa".to_vec(), b"v4".to_vec())]
     );
+    // The real snapshot caller asks for capacity + 1 even in a tiny community.
+    // Both storage implementations must accept that bound without truncating it.
+    assert_eq!(
+        tx.current_range(b"a", b"b", (1 << 20) + 1).unwrap(),
+        vec![(b"aa".to_vec(), b"v4".to_vec())]
+    );
     for (start, end, limit) in [
         (b"".as_slice(), b"b".as_slice(), 1),
         (b"a", b"a", 1),
         (b"b", b"a", 1),
         (b"a", b"b", 0),
-        (b"a", b"b", 100_002),
+        (b"a", b"b", (1 << 20) + 2),
     ] {
         assert!(tx.current_range(start, end, limit).is_err());
     }
