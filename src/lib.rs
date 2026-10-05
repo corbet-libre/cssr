@@ -105,7 +105,8 @@ pub const SCHEMA: &str = "CREATE TABLE cssr_records (
  PRIMARY KEY (community_id,key)) WITHOUT ROWID;";
 
 fn range_bounds(start: &[u8], end: &[u8], limit: u32) -> Result<()> {
-    if start.is_empty() || start >= end || !(1..=100_001).contains(&limit) {
+    // One sentinel beyond the depth-20 capacity detects an oversized snapshot.
+    if start.is_empty() || start >= end || !(1..=((1 << 20) + 1)).contains(&limit) {
         return Err(Error);
     }
     Ok(())
