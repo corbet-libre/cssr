@@ -153,3 +153,35 @@ fn malformed_ancestry_bounds_cannot_be_signed_or_verified() {
     let signature = issuer.issue_ancestry(&boundary).unwrap();
     verify_ancestry(&issuer.public_key(), &boundary, &signature).unwrap();
 }
+
+#[test]
+fn record_issuer_binds_same_frozen_and_descendant_transcript() {
+    let issuer = super::RecordIssuer::new(&[19; 32]);
+    let leaf = [1; 32];
+    let signature = issuer.issue(&[2; 32], 3, &leaf).unwrap();
+    czkp::record::verify_certificate(&issuer.public_key(), &[2; 32], 3, &leaf, &signature).unwrap();
+    for case in 0..7 {
+        let mut key = issuer.public_key();
+        let mut community = [2; 32];
+        let mut epoch = 3;
+        let mut leaf = leaf;
+        let mut signature = signature;
+        match case {
+            0 => key[0] ^= 1,
+            1 => community[0] ^= 1,
+            2 => epoch += 1,
+            3 => leaf[0] ^= 1,
+            4 => signature[0] ^= 1,
+            5 => signature[32..].fill(255),
+            _ => signature[..32].fill(0),
+        }
+        assert!(
+            czkp::record::verify_certificate(&key, &community, epoch, &leaf, &signature).is_err()
+        );
+    }
+    for leaf in [[0; 32], [255; 32]] {
+        assert!(issuer.issue(&[2; 32], 3, &leaf).is_err());
+    }
+    assert!(issuer.issue(&[0; 32], 3, &[1; 32]).is_err());
+    assert!(issuer.issue(&[2; 32], 0, &[1; 32]).is_err());
+}
