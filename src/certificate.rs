@@ -74,6 +74,31 @@ pub fn verify(key: &[u8; 64], accepted: &AcceptedState, signature: &[u8; 64]) ->
         .map_err(|_| crate::Error)
 }
 
+/// Maintained Ed25519 signing for blinded record leaves. The facade must enforce
+/// complete required-inbox consumption and commit the returned object atomically.
+pub struct RecordIssuer(ed25519_dalek::SigningKey);
+impl RecordIssuer {
+    /// Use the authenticated operator's existing Ed25519 seed with a distinct domain.
+    pub fn new(seed: &[u8; 32]) -> Self {
+        Self(ed25519_dalek::SigningKey::from_bytes(seed))
+    }
+    /// Public key carried inside the authenticated common epoch descriptor.
+    pub fn public_key(&self) -> [u8; 32] {
+        self.0.verifying_key().to_bytes()
+    }
+    /// Sign the identical format for a frozen or necessarily descended leaf.
+    pub fn issue(
+        &self,
+        community: &[u8; 32],
+        epoch: u64,
+        leaf: &[u8; 32],
+    ) -> crate::Result<[u8; 64]> {
+        let bytes =
+            czkp::record::certificate_bytes(community, epoch, leaf).map_err(|_| crate::Error)?;
+        Ok(ed25519_dalek::Signer::sign(&self.0, &bytes).to_bytes())
+    }
+}
+
 #[cfg(test)]
 #[path = "../tests/internal/certificate.rs"]
 mod tests;

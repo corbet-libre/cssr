@@ -2,7 +2,7 @@
 name = "cssr"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.95"
 description = "Issuer for zero-knowledge accounting: accepts a verified change and records it"
 license = "LGPL-3.0-only WITH LGPL-3.0-linking-exception"
 repository = "https://git.corbet.ch/corbet-foss/cssr"
@@ -18,6 +18,8 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 
 [dependencies]
+ed25519-dalek = "3.0"
+czkp = { git = "https://git.corbet.ch/corbet-foss/czkp", branch = "main" }
 p256 = { version = "0.13", features = ["ecdsa"] }
 crlt = { git = "https://git.corbet.ch/corbet-foss/crlt", branch = "main" }
 tokio = { version = "1", features = ["rt", "time", "net"] }
