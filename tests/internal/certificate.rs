@@ -32,7 +32,18 @@ fn verify(key: &[u8; 64], bytes: &[u8], signature: &[u8; 64]) -> bool {
 fn issuer_signs_the_golden_transcript_with_the_fixed_canonical_signature() {
     let issuer = CertificateIssuer::new(&[3; 32]).unwrap();
     assert_eq!(issuer.public_key().to_vec(), hex(GOLDEN_PUBLIC_KEY));
-    let transcript = hex(GOLDEN_TRANSCRIPT);
+    // czkp owns the format: its encoder must produce the pinned transcript that
+    // this issuer signs, so signer and verifier cannot drift apart.
+    let transcript = czkp::certificate::AcceptedState {
+        community: [1; 32],
+        owner: [2; 32],
+        state: [3; 32],
+        scope: [4; 32],
+        version: 7,
+        accepted_at: 120,
+    }
+    .bytes();
+    assert_eq!(transcript, hex(GOLDEN_TRANSCRIPT));
     let signature = issuer.sign(&transcript);
     assert_eq!(signature.to_vec(), hex(GOLDEN_SIGNATURE));
     assert!(verify(&issuer.public_key(), &transcript, &signature));
