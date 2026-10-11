@@ -512,12 +512,13 @@ dependencies = [
 [[package]]
 name = "czkp"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/czkp?branch=main#d0b0169671ecc09e9dc1979f762b9a917e10cfaa"
+source = "git+https://git.corbet.ch/corbet-foss/czkp?branch=main#58feda66c34aa7120317441d61f2b31f9aad70d5"
 dependencies = [
  "ark-bn254",
  "ark-ff",
  "data-encoding",
  "ed25519-dalek",
+ "p256",
  "pso-poseidon",
  "rs_merkle",
  "serde",
