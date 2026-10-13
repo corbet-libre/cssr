@@ -425,7 +425,7 @@ dependencies = [
 [[package]]
 name = "crlt"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/crlt?branch=main#c0e627b928c122545010dde93caf2b79c6caec06"
+source = "git+https://git.corbet.ch/corbet-foss/crlt?branch=main#3db630da2dfd176bc665d1617b89a7c0c4ebb2c9"
 dependencies = [
  "deadpool",
  "libsql",
@@ -512,7 +512,7 @@ dependencies = [
 [[package]]
 name = "czkp"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/czkp?branch=main#23d8b4a17a20d69f9d538eb5841e109bc1498af3"
+source = "git+https://git.corbet.ch/corbet-foss/czkp?branch=main#f776a8b96304c87eed6c2c050ee31ac9be05a0f4"
 dependencies = [
  "ark-bn254",
  "ark-ff",
