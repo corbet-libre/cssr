@@ -1,13 +1,13 @@
 use super::*;
 use p256::ecdsa::{VerifyingKey, signature::Verifier};
 
-/// Fixed accepted-state transcript (`cssr.accepted-state.v1`, community [1;32],
-/// owner [2;32], state [3;32], scope [4;32], version 7, accepted_at 120), signed
+/// Fixed accepted-state transcript (`cssr.accepted-state.v2`, community [1;32],
+/// identity [5;32], owner [2;32], state [3;32], scope [4;32], version 7, accepted_at 120), signed
 /// with issuer key [3;32]. cblc's tests verify these exact bytes with its own
 /// encoder, so any divergence between signer and verifier is detected there.
-const GOLDEN_TRANSCRIPT: &str = "637373722e61636365707465642d73746174652e763100010101010101010101010101010101010101010101010101010101010101010102020202020202020202020202020202020202020202020202020202020202020303030303030303030303030303030303030303030303030303030303030303040404040404040404040404040404040404040404040404040404040404040400000000000000070000000000000078";
+const GOLDEN_TRANSCRIPT: &str = "637373722e61636365707465642d73746174652e7632000101010101010101010101010101010101010101010101010101010101010101050505050505050505050505050505050505050505050505050505050505050502020202020202020202020202020202020202020202020202020202020202020303030303030303030303030303030303030303030303030303030303030303040404040404040404040404040404040404040404040404040404040404040400000000000000070000000000000078";
 const GOLDEN_PUBLIC_KEY: &str = "591ab771ebbcfd6d9cb9094d106528add1a69d44c2c1f627f089ec58b9c61adf9f4e6abf0d045c0c693a3c68ad7c97ca72be64def4a26fecd263dd98a92780f0";
-const GOLDEN_SIGNATURE: &str = "902f3030e007662ec00bdb101b6d1205c1d4c461816911db73e1b5d5235e1ed50f5f13410b15d71e59e5eafd6530be144df21ac9729aadbd05625edb52a826bc";
+const GOLDEN_SIGNATURE: &str = "5d7dce889d4477d54367b52f8182d46fe42e32b0ade5ff27213dc2d4df38921323c1d7e787bbf99db619b8bd4f716d2fe6715d4c934466931d9eac98f96519a3";
 
 fn hex(value: &str) -> Vec<u8> {
     (0..value.len())
@@ -36,6 +36,7 @@ fn issuer_signs_the_golden_transcript_with_the_fixed_canonical_signature() {
     // this issuer signs, so signer and verifier cannot drift apart.
     let transcript = czkp::certificate::AcceptedState {
         community: [1; 32],
+        identity: [5; 32],
         owner: [2; 32],
         state: [3; 32],
         scope: [4; 32],

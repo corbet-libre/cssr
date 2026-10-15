@@ -44,7 +44,9 @@ impl RecordIssuer {
     pub fn public_key(&self) -> [u8; 32] {
         self.0.verifying_key().to_bytes()
     }
-    /// Sign the identical format for a frozen or necessarily descended leaf.
+    /// Sign the identical format for a frozen or necessarily descended leaf. `community` is
+    /// the community hash; the operator seed is per community incarnation, so a reused
+    /// address never shares this key with an earlier incarnation.
     pub fn issue(
         &self,
         community: &[u8; 32],
