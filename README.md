@@ -8,7 +8,7 @@ All records are keyed by `(community_id, key)` in `cssr_records`; reads, updates
 
 Use `LibsqlStore::local` for standalone tests. Services install `SCHEMA` in their complete migration history and call `from_community` with the existing crlt capability and runtime. Synchronous operations must run on a blocking thread outside Tokio. The optional real-Turso test runs only if both `TURSO_URL` and `TURSO_TOKEN` are nonempty, against a disposable database; credentials are not in CI.
 
-GitHub Actions runs stable Rust formatting, clippy with warnings denied, and tests. No workstation builds. See [CONTRACT](docs/CONTRACT.md).
+GitHub Actions runs stable Rust formatting, clippy with warnings denied, and tests. See [CONTRACT](docs/CONTRACT.md).
 
 Copyright 2026 Julian Y. Richard Corbet. LGPL-3.0-only WITH LGPL-3.0-linking-exception; see [LICENSE.md](LICENSE.md).
 
