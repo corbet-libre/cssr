@@ -25,7 +25,7 @@ fn verify(key: &[u8; 64], bytes: &[u8], signature: &[u8; 64]) -> bool {
     let Ok(signature) = Signature::from_slice(signature) else {
         return false;
     };
-    signature.normalize_s().is_none() && key.verify(bytes, &signature).is_ok()
+    signature.normalize_s() == signature && key.verify(bytes, &signature).is_ok()
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn issuer_signs_the_golden_transcript_with_the_fixed_canonical_signature() {
     let canonical = Signature::from_slice(&signature).unwrap();
     let (r, s) = canonical.split_scalars();
     let high = Signature::from_scalars(r.to_bytes(), (-*s).to_bytes()).unwrap();
-    assert!(high.normalize_s().is_some());
+    assert!(high.normalize_s() != high);
     assert!(!verify(
         &issuer.public_key(),
         &transcript,
@@ -326,7 +326,7 @@ mod vectors {
             }
             assert_eq!(
                 VerifyingKey::from(&public)
-                    .to_encoded_point(true)
+                    .to_sec1_point(true)
                     .as_bytes()
                     .to_vec(),
                 hex(key.compressed)

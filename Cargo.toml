@@ -20,7 +20,7 @@ missing_docs = "warn"
 [dependencies]
 ed25519-dalek = "3.0"
 czkp = { git = "https://git.corbet.ch/corbet-foss/czkp.git", branch = "main" }
-p256 = { version = "0.13", features = ["ecdsa"] }
+p256 = { version = "0.14", features = ["ecdsa"] }
 crlt = { git = "https://git.corbet.ch/corbet-libre/crlt.git", branch = "main" }
 tokio = { version = "1", features = ["rt", "time", "net"] }
 url = "2"

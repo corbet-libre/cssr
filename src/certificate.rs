@@ -14,7 +14,7 @@ impl CertificateIssuer {
     }
     /// Uncompressed affine coordinates, without the SEC1 prefix.
     pub fn public_key(&self) -> [u8; 64] {
-        let encoded = self.0.verifying_key().to_encoded_point(false);
+        let encoded = self.0.verifying_key().to_sec1_point(false);
         let mut key = [0; 64];
         key.copy_from_slice(&encoded.as_bytes()[1..]);
         key
@@ -24,11 +24,7 @@ impl CertificateIssuer {
     /// signature. The caller verified and atomically accepted the state first.
     pub fn sign(&self, transcript: &[u8]) -> [u8; 64] {
         let signature: Signature = self.0.sign(transcript);
-        signature
-            .normalize_s()
-            .unwrap_or(signature)
-            .to_bytes()
-            .into()
+        signature.normalize_s().to_bytes().into()
     }
 }
 
