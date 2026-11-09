@@ -134,9 +134,9 @@ mod vectors {
         secret: &'static str,
         uncompressed: &'static str,
         compressed: &'static str,
-        /// RustCrypto's SEC1 ECPrivateKey (no optional curve parameters).
+        /// p256 0.13's SEC1 ECPrivateKey (no optional curve parameters); must decode.
         sec1_der: &'static str,
-        /// OpenSSL's form of the same key (with the optional parameters); must decode.
+        /// OpenSSL's form of the same key (with the optional parameters), emitted by p256 0.14.
         openssl_sec1_der: &'static str,
         pkcs8_der: &'static str,
         spki_der: &'static str,
@@ -283,7 +283,12 @@ mod vectors {
         for key in &KEYS {
             let secret = SecretKey::from_slice(&hex(key.secret)).unwrap();
             assert_eq!(secret.to_bytes().to_vec(), hex(key.secret));
-            assert_eq!(secret.to_sec1_der().unwrap().to_vec(), hex(key.sec1_der));
+            // p256 0.14 emits the ECPrivateKey with the optional curve parameters (OpenSSL's
+            // form); 0.13's form without them stays a decode vector below.
+            assert_eq!(
+                secret.to_sec1_der().unwrap().to_vec(),
+                hex(key.openssl_sec1_der)
+            );
             assert_eq!(
                 secret.to_pkcs8_der().unwrap().as_bytes().to_vec(),
                 hex(key.pkcs8_der)
