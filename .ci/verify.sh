@@ -11,7 +11,6 @@ python3 .github/check-first-party.py
 CSSR_LAST_GATE="toolchain"
 rustc --version
 CSSR_LAST_GATE="fmt"
-bash .ci/update-our-crates.sh
 cargo fmt --check || { cargo fmt; git diff > formatting.patch; exit 1; }
 CSSR_LAST_GATE="clippy"
 cargo clippy --locked --all-targets -- -D warnings
